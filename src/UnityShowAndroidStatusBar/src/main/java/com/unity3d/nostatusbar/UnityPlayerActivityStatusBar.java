@@ -1,5 +1,9 @@
 package com.unity3d.nostatusbar;
 
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -11,7 +15,10 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Build.VERSION;
 import android.os.Bundle;
+import android.os.Debug;
 import android.support.multidex.MultiDex;
+import android.support.v4.app.NotificationCompat;
+import android.support.v4.app.TaskStackBuilder;
 import android.util.Log;
 import android.view.View;
 import android.view.View.OnSystemUiVisibilityChangeListener;
@@ -22,6 +29,9 @@ import com.lzy.imagepicker.bean.ImageItem;
 import com.lzy.imagepicker.ui.ImageGridActivity;
 import com.unity3d.player.UnityPlayer;
 import com.unity3d.player.UnityPlayerActivity;
+
+import org.json.JSONObject;
+
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -36,6 +46,7 @@ public class UnityPlayerActivityStatusBar extends UnityPlayerActivity
 {
 	public static int Image_Picker = 1000;
 	public static final String LogTag = "UKidsClient";
+	public static final String CHANNEL_ID = "UKidsChannel";
 	private String mImageSavePath;
 
 	protected void attachBaseContext(Context base)
@@ -52,6 +63,8 @@ public class UnityPlayerActivityStatusBar extends UnityPlayerActivity
 
 		showSystemUi();
 		addUiVisibilityChangeListener();
+
+		createNotificationChannel();
 
 		ImagePicker imagePicker = ImagePicker.getInstance();
 		imagePicker.setImageLoader(new PicassoImageLoader());
@@ -274,4 +287,148 @@ public class UnityPlayerActivityStatusBar extends UnityPlayerActivity
 
 		return md5;
 	}
+
+	//Notifications
+	public void raiseLocalNotification(String notification)
+	{
+		Log.d(LogTag, "raising LocalNotification");
+		try
+		{
+			JSONObject jNotification = new JSONObject(notification);
+			Log.d(LogTag, "notification = " + jNotification.toString());
+			/*
+			{"aps":{
+				"alert":{
+					"title":"亲子任务提醒",
+					"body":"您有1个未读的亲子任务提交，记得点击查看哦！"},
+					"sound":""
+					},
+				"_gmid_":"OSS-1128_0398eaf7ddb01556751be4492e4ec109:cb26291e6be29be7d2b59a56d180fad9:",
+				"_ge_":"1",
+				"_gurl_":"sdk.open.extension.getui.com:8123",
+				"payload":"{
+					\"type\":\"payload\",\"taskId\":\"OSS-1128_0398eaf7ddb01556751be4492e4ec109\",
+					\"msgId\":\"9bad226f56d84af19bb397b926594856\",
+					\"payload\":\"{\\\"DisplayTitle\\\":\\\"\\\\u4eb2\\\\u5b50\\\\u4efb\\\\u52a1\\\\u63d0\\\\u9192\\\",\\\"DisplayContent\\\":\\\"\\\\u60a8\\\\u67091\\\\u4e2a\\\\u672a\\\\u8bfb\\\\u7684\\\\u4eb2\\\\u5b50\\\\u4efb\\\\u52a1\\\\u63d0\\\\u4ea4\\\\uff0c\\\\u8bb0\\\\u5f97\\\\u70b9\\\\u51fb\\\\u67e5\\\\u770b\\\\u54e6\\\\uff01\\\",\\\"CategoryType\\\":2,\\\"ContentID\\\":303,\\\"CustomerData\\\":\\\"\\\"}\"}
+				"}
+			* */
+			if (jNotification != null)
+			{
+				String payloadStr = jNotification.getString("payload");
+				JSONObject jPayload = new JSONObject(payloadStr);
+				if (jPayload != null)
+				{
+					String payloadDataStr = jPayload.getString("payload");
+					JSONObject jPayloadData = new JSONObject(payloadDataStr);
+					if (jPayloadData != null)
+					{
+						String notificationTitle = jPayloadData.getString("DisplayTitle");
+						String notificationContent = jPayloadData.getString("DisplayContent");
+						Log.d(LogTag, "Sending notification With Title = " + notificationTitle + " Content = " + notificationContent);
+						NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(getApplicationContext())
+								.setSmallIcon(R.drawable.notification_parent)
+								.setTicker(notificationTitle)
+								.setContentTitle(notificationTitle)
+								.setContentText(notificationContent)
+								.setWhen(System.currentTimeMillis())
+								.setPriority(NotificationCompat.PRIORITY_DEFAULT)
+								.setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+								.setAutoCancel(true);
+
+						// Creates an explicit intent for an Activity in your app
+						Intent resultIntent = new Intent(this, UnityPlayerActivityStatusBar.class);
+						// The stack builder object will contain an artificial back stack for the
+						// started Activity.
+						// This ensures that navigating backward from the Activity leads out of
+						// your application to the Home screen.
+						TaskStackBuilder stackBuilder = TaskStackBuilder.create(this);
+						// Adds the back stack for the Intent (but not the Intent itself)
+						stackBuilder.addParentStack(UnityPlayerActivityStatusBar.class);
+						// Adds the Intent that starts the Activity to the top of the stack
+						stackBuilder.addNextIntent(resultIntent);
+
+						PendingIntent resultPendingIntent =
+								stackBuilder.getPendingIntent(
+										0,
+										PendingIntent.FLAG_UPDATE_CURRENT
+								);
+						mBuilder.setContentIntent(resultPendingIntent);
+
+						NotificationManager mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+						// mId allows you to update the notification later on.
+						mNotificationManager.notify(10086, mBuilder.build());
+						Log.d(LogTag, "Notification delivered success");
+					}else
+					{
+						Log.d(LogTag, "unable to parse payload data");
+					}
+				}else
+				{
+					Log.d(LogTag, "unable to parse payload data string");
+				}
+			} else
+			{
+				Log.d(LogTag, "Unable to convert notification string to json object");
+			}
+		}catch (Exception e)
+		{
+			Log.d(LogTag, "unable to convert notification string to json object");
+		}
+	}
+
+	private void createNotificationChannel() {
+		// Create the NotificationChannel, but only on API 26+ because
+		// the NotificationChannel class is new and not in the support library
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+			CharSequence name = getString(R.string.channel_name);
+			String description = getString(R.string.channel_description);
+			int importance = NotificationManager.IMPORTANCE_DEFAULT;
+			NotificationChannel channel = new NotificationChannel(CHANNEL_ID, name, importance);
+			channel.setDescription(description);
+			// Register the channel with the system; you can't change the importance
+			// or other notification behaviors after this
+			NotificationManager notificationManager = getSystemService(NotificationManager.class);
+			notificationManager.createNotificationChannel(channel);
+		}
+	}
+
+	public long getApplicationBageNum()
+	{
+		Log.d(LogTag, "getApplicationBageNum");
+//		NotificationManager mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+
+		return 0;
+	}
+
+	public void reduceApplicationBageByOne()
+	{
+		Log.d(LogTag, "reduceApplicationBadgeByOne");
+	}
+
+	public void reduceApplicationBageByNum(int count)
+	{
+		Log.d(LogTag, "reduceApplicationBadgeByNum");
+	}
+
+	public void increaseApplicationBageByCount(int count)
+	{
+		Log.d(LogTag, "increaseApplicationBadgeByCount");
+	}
+
+	public void resetBageCount()
+	{
+		Log.d(LogTag, "resetBadgeCount");
+	}
+
+	public void clearCategoryNotificaition(int category)
+	{
+		Log.d(LogTag, "clearCategory Notification");
+	}
+
+	public long getCategoryNotificaitionCount(int category)
+	{
+		Log.d(LogTag, "getCategory NotificationCount");
+		return 0;
+	}
+	//End Notification
 }
