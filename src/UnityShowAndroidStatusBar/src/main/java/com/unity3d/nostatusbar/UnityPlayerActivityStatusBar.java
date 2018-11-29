@@ -1,6 +1,5 @@
 package com.unity3d.nostatusbar;
 
-import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -13,17 +12,14 @@ import android.graphics.Bitmap.CompressFormat;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Build;
-import android.os.Build.VERSION;
 import android.os.Bundle;
-import android.os.Debug;
 import android.support.multidex.MultiDex;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.app.TaskStackBuilder;
 import android.util.Log;
 import android.view.View;
-import android.view.View.OnSystemUiVisibilityChangeListener;
-import android.view.Window;
 import android.widget.Toast;
+
 import com.lzy.imagepicker.ImagePicker;
 import com.lzy.imagepicker.bean.ImageItem;
 import com.lzy.imagepicker.ui.ImageGridActivity;
@@ -41,6 +37,8 @@ import java.io.InputStream;
 import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.List;
+
+import com.getui.getuiunity.GTPushIntentService;
 
 public class UnityPlayerActivityStatusBar extends UnityPlayerActivity
 {
@@ -325,7 +323,7 @@ public class UnityPlayerActivityStatusBar extends UnityPlayerActivity
 						String notificationTitle = jPayloadData.getString("DisplayTitle");
 						String notificationContent = jPayloadData.getString("DisplayContent");
 						Log.d(LogTag, "Sending notification With Title = " + notificationTitle + " Content = " + notificationContent);
-						NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(getApplicationContext())
+						NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(getApplicationContext(), CHANNEL_ID)
 								.setSmallIcon(R.drawable.notification_parent)
 								.setTicker(notificationTitle)
 								.setContentTitle(notificationTitle)
@@ -334,24 +332,23 @@ public class UnityPlayerActivityStatusBar extends UnityPlayerActivity
 								.setPriority(NotificationCompat.PRIORITY_DEFAULT)
 								.setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
 								.setAutoCancel(true);
+						mBuilder.setChannelId(CHANNEL_ID);
 
 						// Creates an explicit intent for an Activity in your app
-						Intent resultIntent = new Intent(this, UnityPlayerActivityStatusBar.class);
+						Intent resultIntent = new Intent(this, GTPushIntentService.class);
+						resultIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
 						// The stack builder object will contain an artificial back stack for the
 						// started Activity.
 						// This ensures that navigating backward from the Activity leads out of
 						// your application to the Home screen.
 						TaskStackBuilder stackBuilder = TaskStackBuilder.create(this);
 						// Adds the back stack for the Intent (but not the Intent itself)
-						stackBuilder.addParentStack(UnityPlayerActivityStatusBar.class);
+//						stackBuilder.addParentStack(UnityPlayerActivityStatusBar.class);
 						// Adds the Intent that starts the Activity to the top of the stack
-						stackBuilder.addNextIntent(resultIntent);
-
+//						stackBuilder.addNextIntent(resultIntent);
+						stackBuilder.addNextIntentWithParentStack(resultIntent);
 						PendingIntent resultPendingIntent =
-								stackBuilder.getPendingIntent(
-										0,
-										PendingIntent.FLAG_UPDATE_CURRENT
-								);
+								stackBuilder.getPendingIntent(0, PendingIntent.FLAG_UPDATE_CURRENT);
 						mBuilder.setContentIntent(resultPendingIntent);
 
 						NotificationManager mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
