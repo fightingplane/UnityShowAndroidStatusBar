@@ -38,6 +38,7 @@ import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.getui.getuiunity.GTPushService;
 import com.getui.getuiunity.GTPushIntentService;
 
 public class UnityPlayerActivityStatusBar extends UnityPlayerActivity
@@ -45,6 +46,7 @@ public class UnityPlayerActivityStatusBar extends UnityPlayerActivity
 	public static int Image_Picker = 1000;
 	public static final String LogTag = "UKidsClient";
 	public static final String CHANNEL_ID = "UKidsChannel";
+	public static String ClickedNotification = "";
 	private String mImageSavePath;
 
 	protected void attachBaseContext(Context base)
@@ -335,20 +337,21 @@ public class UnityPlayerActivityStatusBar extends UnityPlayerActivity
 						mBuilder.setChannelId(CHANNEL_ID);
 
 						// Creates an explicit intent for an Activity in your app
-						Intent resultIntent = new Intent(this, GTPushIntentService.class);
+						Intent resultIntent = new Intent(this, NotificationReceiver.class);
+						resultIntent.putExtra("NotificationMessage", notification);
 						resultIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
 						// The stack builder object will contain an artificial back stack for the
 						// started Activity.
 						// This ensures that navigating backward from the Activity leads out of
 						// your application to the Home screen.
-						TaskStackBuilder stackBuilder = TaskStackBuilder.create(this);
+//						TaskStackBuilder stackBuilder = TaskStackBuilder.create(this);
 						// Adds the back stack for the Intent (but not the Intent itself)
 //						stackBuilder.addParentStack(UnityPlayerActivityStatusBar.class);
 						// Adds the Intent that starts the Activity to the top of the stack
 //						stackBuilder.addNextIntent(resultIntent);
-						stackBuilder.addNextIntentWithParentStack(resultIntent);
-						PendingIntent resultPendingIntent =
-								stackBuilder.getPendingIntent(0, PendingIntent.FLAG_UPDATE_CURRENT);
+//						stackBuilder.addNextIntent(resultIntent);
+						PendingIntent resultPendingIntent = PendingIntent.getBroadcast(this, 0, resultIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+//								stackBuilder.getPendingIntent(0, PendingIntent.FLAG_UPDATE_CURRENT);
 						mBuilder.setContentIntent(resultPendingIntent);
 
 						NotificationManager mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
@@ -387,6 +390,11 @@ public class UnityPlayerActivityStatusBar extends UnityPlayerActivity
 			NotificationManager notificationManager = getSystemService(NotificationManager.class);
 			notificationManager.createNotificationChannel(channel);
 		}
+	}
+
+	public String getStartUpMessage()
+	{
+		return ClickedNotification;
 	}
 
 	public long getApplicationBageNum()
