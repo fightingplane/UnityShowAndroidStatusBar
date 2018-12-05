@@ -258,7 +258,7 @@ public class UnityPlayerActivityStatusBar extends UnityPlayerActivity
 		int origWidth = b.getWidth();
 		int origHeight = b.getHeight();
 
-		float destPixel = 1000.0f;
+		float destPixel = 1500.0f;
 		float scale = 1.0F;
 		if (origWidth > origHeight)
 		{
